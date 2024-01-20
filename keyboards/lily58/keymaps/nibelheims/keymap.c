@@ -9,9 +9,7 @@ enum layer_number {
 };
 
 enum custom_keycodes {
-    MY_INF = SAFE_RANGE,
-    MY_SUP,
-    MY_NAV_REFRESH
+    MY_NAV_REFRESH = SAFE_RANGE
 };
 
 
@@ -57,7 +55,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   KC_CALC, _______, KC_APP,  MY_NAV_REFRESH, _______, _______,             _______, KC_PGUP, KC_PGDN, KC_INS, KC_AT,    _______,
   KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,                      KC_F7,   KC_F8,   KC_F9,   KC_F10,  KC_F11,  KC_F12,
   KC_GRV,  KC_EXLM, KC_AT,   KC_HASH, KC_DLR,  KC_PERC,                    KC_CIRC, KC_AMPR, KC_ASTR, KC_LPRN, KC_RPRN, KC_TILD,
-  KC_CAPS, _______, MY_INF,  MY_SUP,  _______, _______, _______, _______,  XXXXXXX, KC_UNDS, KC_PLUS, KC_LCBR, KC_RCBR, KC_PIPE,
+  KC_CAPS, _______,_______,KC_NUBS, S(KC_NUBS),_______, _______, _______,  XXXXXXX, KC_UNDS, KC_PLUS, KC_LCBR, KC_RCBR, KC_PIPE,
                              _______, _______, _______, _______, _______,  _______, KC_DEL, _______
 ),
 /* RAISE
@@ -175,18 +173,6 @@ bool oled_task_user(void) {
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
-        case MY_INF:
-            if (record->event.pressed) {
-                SEND_STRING(SS_TAP(X_NUBS));
-            }
-            break;
-
-        case MY_SUP:
-            if (record->event.pressed) {
-                SEND_STRING(SS_DOWN(X_LSFT) SS_TAP(X_NUBS) SS_UP(X_LSFT));
-            }
-            break;
-
         case MY_NAV_REFRESH:
             if (record->event.pressed) {
                 SEND_STRING(SS_DOWN(X_LCTL) SS_TAP(X_F5) SS_UP(X_LCTL));
