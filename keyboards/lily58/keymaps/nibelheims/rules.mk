@@ -1,6 +1,6 @@
 BOOTMAGIC_ENABLE = yes      # Enable Bootmagic Lite
 MOUSEKEY_ENABLE = no        # Mouse keys
-EXTRAKEY_ENABLE = no        # Audio control and System control
+EXTRAKEY_ENABLE = yes       # Audio control and System control
 CONSOLE_ENABLE = no         # Console for debug
 COMMAND_ENABLE = no         # Commands for debug and configuration
 NKRO_ENABLE = yes
@@ -11,6 +11,7 @@ SWAP_HANDS_ENABLE = no      # Enable one-hand typing
 OLED_ENABLE= yes            # OLED display
 VIA_ENABLE = yes
 WPM_ENABLE = yes
+SERIAL_DRIVER = vendor
 
 CONVERT_TO=elite_pi
 
