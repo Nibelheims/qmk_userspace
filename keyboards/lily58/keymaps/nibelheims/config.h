@@ -38,3 +38,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define TAPPING_TERM 100
 
 #define SOFT_SERIAL_PIN D2
+
+// use the slave half OLED as a status monitor
+#define SPLIT_LAYER_STATE_ENABLE
+#define SPLIT_LED_STATE_ENABLE
+#define SPLIT_MODS_ENABLE
+#define SPLIT_WPM_ENABLE
+

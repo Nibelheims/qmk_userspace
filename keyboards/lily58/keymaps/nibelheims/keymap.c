@@ -1,5 +1,6 @@
 #include QMK_KEYBOARD_H
 #include <stdio.h>
+#include <stdint.h>
 
 enum layer_number {
   _QWERTY = 0,
@@ -12,6 +13,8 @@ enum custom_keycodes {
     MY_NAV_REFRESH = SAFE_RANGE
 };
 
+static volatile uint8_t cpu_percent;
+static volatile uint8_t mem_percent;
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -117,8 +120,8 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 #ifdef OLED_ENABLE
 
 oled_rotation_t oled_init_user(oled_rotation_t rotation) {
-  if (!is_keyboard_master())
-    return OLED_ROTATION_180;  // flips the display 180 degrees if offhand
+  if (is_keyboard_master())
+    return OLED_ROTATION_0;
   else {
     return OLED_ROTATION_270;
   }
@@ -149,7 +152,7 @@ const char* read_mod_state(void) {
 
 bool oled_task_user(void) {
     uint8_t n = get_current_wpm();
-    if (is_keyboard_master()) {
+    if (!is_keyboard_master()) {
         oled_set_cursor(0,1);
         char wpm_counter[4];
         wpm_counter[3] = '\0';
@@ -165,7 +168,15 @@ bool oled_task_user(void) {
         oled_write_ln(read_mod_state(),true);
         oled_write_ln("CAPS", host_keyboard_led_state().caps_lock);
     } else {
-        oled_write(read_logo(), false);
+        char percent[4+1];
+        //oled_write(read_logo(), false);
+        snprintf(percent, sizeof(percent), "%3d%%", (int) cpu_percent);
+        oled_write("cpu:", false);
+        oled_write_ln(percent, false);
+
+        snprintf(percent, sizeof(percent), "%3d%%", (int) mem_percent);
+        oled_write("mem:", false);
+        oled_write_ln(percent, false);
     }
     return false;
 }
@@ -181,5 +192,24 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     return true;
+}
+
+bool raw_hid_receive_user(uint8_t *data, uint8_t length) {
+    // gometrics
+    if (is_keyboard_master()) {
+        const uint8_t MAGIC[] = {0x67, 0x6F, 0x6D, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73};
+        if (!memcmp(MAGIC, data, sizeof(MAGIC))) {
+            // the report was for us
+            cpu_percent = data[sizeof(MAGIC) + 0];
+            mem_percent = data[sizeof(MAGIC) + 1];
+            return false;
+        } else {
+            // something else, eg VIA
+            return true;
+        }
+    }
+    else {
+        return true;
+    }
 }
 

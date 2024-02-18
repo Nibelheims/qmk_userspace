@@ -12,6 +12,7 @@ OLED_ENABLE= yes            # OLED display
 VIA_ENABLE = yes
 WPM_ENABLE = yes
 SERIAL_DRIVER = vendor
+RAW_ENABLE = yes
 
 CONVERT_TO=elite_pi
 
