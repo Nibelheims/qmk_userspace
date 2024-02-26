@@ -1,3 +1,4 @@
+#include <string.h>
 #include QMK_KEYBOARD_H
 #include <stdio.h>
 #include <stdint.h>
@@ -13,8 +14,18 @@ enum custom_keycodes {
     MY_NAV_REFRESH = SAFE_RANGE
 };
 
-static volatile uint8_t cpu_percent;
-static volatile uint8_t mem_percent;
+typedef struct {
+  char name[4+1/*final null byte*/];
+  uint8_t percent;
+} measure_t;
+
+typedef struct {
+  measure_t  measures[4]; // maximum nb of measures
+  size_t     nb_measures;
+} measures_t;
+
+static bool prev_was_measures = false;
+static volatile measures_t measures;
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -58,7 +69,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   KC_CALC, _______, KC_APP,  MY_NAV_REFRESH, _______, _______,             _______, KC_PGUP, KC_PGDN, KC_INS, KC_AT,    _______,
   KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,                      KC_F7,   KC_F8,   KC_F9,   KC_F10,  KC_F11,  KC_F12,
   KC_GRV,  KC_EXLM, KC_AT,   KC_HASH, KC_DLR,  KC_PERC,                    KC_CIRC, KC_AMPR, KC_ASTR, KC_LPRN, KC_RPRN, KC_TILD,
-  KC_LSFT, KC_CAPS,_______,KC_NUBS, S(KC_NUBS),_______, _______, _______,  KC_PIPE, KC_UNDS, KC_PLUS, KC_LCBR, KC_RCBR, KC_RSFT,
+  KC_LSFT, KC_CAPS, KC_BSLS ,KC_NUBS, S(KC_NUBS),_______, _______, _______,  KC_PIPE, KC_UNDS, KC_PLUS, KC_LCBR, KC_RCBR, KC_RSFT,
                              _______, _______, _______, _______, _______,  _______, KC_DEL, KC_RGUI
 ),
 /* RAISE
@@ -120,6 +131,7 @@ layer_state_t layer_state_set_user(layer_state_t state) {
 #ifdef OLED_ENABLE
 
 oled_rotation_t oled_init_user(oled_rotation_t rotation) {
+  memset((void*)&measures, 0, sizeof(measures));
   if (is_keyboard_master())
     return OLED_ROTATION_0;
   else {
@@ -168,15 +180,22 @@ bool oled_task_user(void) {
         oled_write_ln(read_mod_state(),true);
         oled_write_ln("CAPS", host_keyboard_led_state().caps_lock);
     } else {
+        char name[4+1];
         char percent[4+1];
-        //oled_write(read_logo(), false);
-        snprintf(percent, sizeof(percent), "%3d%%", (int) cpu_percent);
-        oled_write("cpu:", false);
-        oled_write_ln(percent, false);
-
-        snprintf(percent, sizeof(percent), "%3d%%", (int) mem_percent);
-        oled_write("mem:", false);
-        oled_write_ln(percent, false);
+        if (measures.nb_measures == 0) {
+            if (prev_was_measures) oled_clear();
+            oled_write(read_logo(), false);
+            prev_was_measures = false;
+        } else {
+            if (!prev_was_measures) oled_clear();
+            for (int i = 0; i < measures.nb_measures; i++) {
+                snprintf(name, sizeof(name), "%.4s", measures.measures[i].name);
+                snprintf(percent, sizeof(percent), "%3d%%", (int) measures.measures[i].percent);
+                oled_write(name, false);
+                oled_write_ln(percent, false);
+            }
+            prev_was_measures = true;
+        }
     }
     return false;
 }
@@ -200,8 +219,19 @@ bool raw_hid_receive_user(uint8_t *data, uint8_t length) {
         const uint8_t MAGIC[] = {0x67, 0x6F, 0x6D, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73};
         if (!memcmp(MAGIC, data, sizeof(MAGIC))) {
             // the report was for us
-            cpu_percent = data[sizeof(MAGIC) + 0];
-            mem_percent = data[sizeof(MAGIC) + 1];
+            // skip the header and read the number of items
+            data += sizeof(MAGIC);
+            size_t nb_items = (size_t)*data;
+            nb_items = (nb_items > 4) ? 4 : nb_items;
+            data++;
+
+            memset((void*)&measures, 0, sizeof(measures)); // all names are null
+            for (int i = 0; i < nb_items; i++, data+=5) {
+                strncpy((char *)measures.measures[i].name, (const char*)data, 4);
+                measures.measures[i].percent = (uint8_t)data[4];
+            }
+            measures.nb_measures = nb_items;
+
             return false;
         } else {
             // something else, eg VIA
