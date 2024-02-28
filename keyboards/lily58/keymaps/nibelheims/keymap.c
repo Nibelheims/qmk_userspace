@@ -26,6 +26,8 @@ typedef struct {
 
 static bool prev_was_measures = false;
 static volatile measures_t measures;
+static volatile bool metrics_received = false;
+static deferred_token metrics_timeout_token = INVALID_DEFERRED_TOKEN;
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -213,6 +215,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
+// stop rendering metrics when data is not received anymore
+uint32_t metrics_timeout(uint32_t trigger_time, void *cb_arg) {
+    bool metrics_rcvd = *((bool*)cb_arg);
+    if (!metrics_rcvd) {
+        // timeout! let's display the logo again
+        measures.nb_measures = 0;
+    }
+    // ms delay, 0 if not to be called again
+    return metrics_rcvd ? GOMETRICS_TIMEOUT_MS : 0;
+}
+
 bool raw_hid_receive_user(uint8_t *data, uint8_t length) {
     // gometrics
     if (is_keyboard_master()) {
@@ -223,18 +236,30 @@ bool raw_hid_receive_user(uint8_t *data, uint8_t length) {
             data += sizeof(MAGIC);
             size_t nb_items = (size_t)*data;
             nb_items = (nb_items > 4) ? 4 : nb_items;
+
+            measures.nb_measures = nb_items;
             data++;
 
-            memset((void*)&measures, 0, sizeof(measures)); // all names are null
-            for (int i = 0; i < nb_items; i++, data+=5) {
-                strncpy((char *)measures.measures[i].name, (const char*)data, 4);
-                measures.measures[i].percent = (uint8_t)data[4];
+            if (nb_items > 0) {
+                memset((void*)&measures, 0, sizeof(measures)); // all names are null
+                for (int i = 0; i < nb_items; i++, data+=5) {
+                    strncpy((char *)measures.measures[i].name, (const char*)data, 4);
+                    measures.measures[i].percent = (uint8_t)data[4];
+                }
+                metrics_received = true;
+                if (metrics_timeout_token != INVALID_DEFERRED_TOKEN) {
+                    extend_deferred_exec(metrics_timeout_token, GOMETRICS_TIMEOUT_MS);
+                } else {
+                    metrics_timeout_token = defer_exec(GOMETRICS_TIMEOUT_MS, metrics_timeout, (void*)&metrics_received);
+                }
+            } else {
+                metrics_received = false;
             }
-            measures.nb_measures = nb_items;
 
             return false;
         } else {
             // something else, eg VIA
+            metrics_received = false;
             return true;
         }
     }

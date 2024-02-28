@@ -49,3 +49,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #undef OLED_FONT_H
 #define OLED_FONT_H "glcdfont_niflheims.c"
 
+// timeout in ms after which the logo gets displayed instead of dead metrics
+#define GOMETRICS_TIMEOUT_MS 10000
