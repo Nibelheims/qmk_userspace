@@ -45,3 +45,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SPLIT_MODS_ENABLE
 #define SPLIT_WPM_ENABLE
 
+// use my own logo and progress bars dedicated glyphs for gometrics
+#undef OLED_FONT_H
+#define OLED_FONT_H "glcdfont_niflheims.c"
+
